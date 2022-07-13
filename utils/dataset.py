@@ -1,11 +1,10 @@
 from torch.utils.data import Dataset
-from tqdm import tqdm
 from pathlib import Path
 from scipy.io import savemat, loadmat
 import glob
 import os
 import numpy as np
-from utils.utilis import *
+from utils.utilis import generate_K1map
 import torch
 
 class load_qis_mat(Dataset):
@@ -34,7 +33,7 @@ class load_qis_mat(Dataset):
             struct = loadmat(path)
             y  = struct['y'].astype(np.float32)
             label = struct['label'].astype(np.float32)
-            otf3d = struct['otf3d'].astype(np.complex)
+            otf3d = struct['otf3d'].astype(np.complex64)
             if y.shape[-1] == self.Kt:
                 y = np.transpose(y,[2,0,1])
             elif y.shape[0] == self.Kt:
@@ -63,4 +62,9 @@ if __name__ == "__main__":
     path = "/Users/zhangyunping/PycharmProjects/PLholo/syn_data/data/Nz7_ppv1e-03~5e-03_dz1200um"
     dataloader, dataset = create_dataloader_qis(path,2,30,2)
     for batch_i, (K1_map, label, otf3d, y) in enumerate(dataloader):
-        break
+        break# if __name__ == "__main__":
+#     y_pred = torch.zeros([2,3,4,4])
+#     a = 2*torch.ones([2,2])
+#
+#     y_true = torch.ones_like(y_pred)
+#     pcc(y_pred,y_true)

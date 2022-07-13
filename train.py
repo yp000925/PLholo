@@ -5,18 +5,14 @@ import torch
 import logging
 from model.PLholonet import PLholonet
 from utils.dataset import create_dataloader_qis
-from utils.obj3d import *
-from utils.utilis import *
+from utils.utilis import PCC,PSNR,accuracy,random_init
 from torch.optim import Adam
 from tqdm import tqdm
 from argparse import ArgumentParser
 from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
 
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_epoch(model, opt, dataloader, epoch, freeze = []):
     model.train()
@@ -40,7 +36,9 @@ def train_epoch(model, opt, dataloader, epoch, freeze = []):
     psnr = []
     opt.zero_grad()
     for i,(K1_map, label, otf3d, _) in pbar:
-        K1_map.to(device=device)
+        K1_map = K1_map.to(device=model.device)
+        otf3d = otf3d.to(device=model.device)
+        label = label.to(device=model.device)
         x, _sloss = model(K1_map,otf3d)
         _dloss = torch.mean(torch.pow(x-label,2))
         _total_loss = _dloss+_sloss
@@ -84,7 +82,9 @@ def eval_epoch(model, opt, dataloader, epoch):
 
     with torch.no_grad():
         for i,(K1_map, label, otf3d, _) in pbar:
-            K1_map.to(device=device)
+            K1_map = K1_map.to(device=model.device)
+            otf3d = otf3d.to(device=model.device)
+            label = label.to(device=model.device)
             x, _sloss = model(K1_map,otf3d)
             _dloss = torch.mean(torch.pow(x-label,2))
             _total_loss = _dloss+_sloss
@@ -118,7 +118,7 @@ if __name__=="__main__":
     random_init(seed=43)
 
     parser = ArgumentParser(description='PLholonet')
-    parser.add_argument('--batch_sz', type=int, default=2, help='batch size')
+    parser.add_argument('--batch_sz', type=int, default=16, help='batch size')
     # parser.add_argument('--obj_type', type=str, default='sim', help='exp or sim')
     parser.add_argument('--Nz', type=int, default=25, help='depth number')
     parser.add_argument('--kt', type=int, default=30, help='temporal oversampling ratio')
@@ -126,7 +126,7 @@ if __name__=="__main__":
     parser.add_argument('--dz', type=str, default='1200um', help='depth interval')
     parser.add_argument('--ppv', type=str, default='5e-03', help='ppv')
     parser.add_argument('--lr_init', type=float, default=1e-4, help='initial learning rate')
-    parser.add_argument('--epochs', type=int, default=2, help='epochs')
+    parser.add_argument('--epochs', type=int, default=100, help='epochs')
     parser.add_argument('--Nxy', type=int, default=128, help='lateral size')
     parser.add_argument('--gamma', type=float, default=1e-4, help='symmetric loss parameter')
     parser.add_argument('--layer_num', type=int, default=5,  help='phase number of PLholoNet')
@@ -143,7 +143,10 @@ if __name__=="__main__":
     sys_param = 'Nz' + str(args.Nz)  + '_Nxy' + str(args.Nxy) + \
                 'L' + str(args.layer_num) + '_B' + str(args.batch_sz) + \
                 '_lr' + str(args.lr_init) + '_G' + str(args.gamma) + '_kt' + str(args.kt)+'_ks' + str(args.ks)
-    data_path = './syn_data/data/' + 'Nz' + str(args.Nz) + '_Nxy' + str(args.Nxy)+'_kt' + str(args.kt)+'_ks' + str(args.ks)
+
+    train_data_path =  './syn_data/data/train_' + 'Nz' + str(args.Nz) + '_Nxy' + str(args.Nxy)+'_kt' + str(args.kt)+'_ks' + str(args.ks)
+    val_data_path = './syn_data/data/val_' + 'Nz' + str(args.Nz) + '_Nxy' + str(args.Nxy)+'_kt' + str(args.kt)+'_ks' + str(args.ks)
+
     out_dir = './experiment/'
     log_dir = './logs/'
     model_name =  'PLholonet_'+ sys_param
@@ -157,13 +160,14 @@ if __name__=="__main__":
     best_path = os.path.join(save_dir, 'best.pt')
 
     #%% Dataset prepare
-    train_dataloader, train_dataset = create_dataloader_qis(data_path,batch_sz,kt,ks)
+    train_dataloader, train_dataset = create_dataloader_qis(train_data_path,batch_sz,kt,ks)
+    val_dataloader, val_dataset = create_dataloader_qis(val_data_path,batch_sz,kt,ks)
 
     model = PLholonet(n=Nd, d=Nz, sysloss_param=args.gamma)
 
     if torch.cuda.is_available():
-        model = model.to('cuda')
-        model = torch.nn.DataParallel(model).cuda()
+        model = torch.nn.DataParallel(model)
+        model = model.module.to("cuda")
         model.device = torch.device('cuda')
     else:
         model = torch.nn.DataParallel(model)
@@ -182,7 +186,7 @@ if __name__=="__main__":
 
     for epoch in range(start_epoch, end_epoch, 1):
         train_out = train_epoch(model,optimizer,train_dataloader,epoch)
-        eval_out = eval_epoch(model,optimizer,train_dataloader,epoch)
+        eval_out = eval_epoch(model,optimizer,val_dataloader,epoch)
 
         # Log
         current_lr = optimizer.param_groups[0]['lr']

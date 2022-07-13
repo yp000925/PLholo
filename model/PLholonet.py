@@ -1,18 +1,12 @@
 import torch
-import numpy as np
 import torch.nn as nn
-from model.ResUNet import ResUNet
 from torch.autograd import Variable
-from utils.utilis import *
-from utils.obj3d import *
-import time
-from torch.nn import Conv2d,BatchNorm2d,LeakyReLU
+from utils.utilis import FT2d,iFT2d,autopad
 from utils.dataset import create_dataloader_qis
 
 class PLholonet_block(nn.Module):
     def __init__(self,d, K=4, alpha=4):
         super(PLholonet_block, self).__init__()
-        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.K = K
         self.alpha = alpha
         self.rho1 = torch.nn.Parameter(torch.randn([1]),requires_grad=True)
@@ -53,11 +47,7 @@ class PLholonet_block(nn.Module):
             otf3d = otf3d.unsqueeze(0)
         if len(holo.shape) == 3:
             holo = holo.unsqueeze(1) #[B,1,H,W]
-
-
-
         holo = holo.to(torch.complex64)
-        otf3d = otf3d.to(torch.complex64)
         conj_otf3d = torch.conj(otf3d)
         volumne_slice = otf3d.shape[1]
         # perform iFT(FT(o)*conj(h))
@@ -186,13 +176,13 @@ class PLholonet(nn.Module):
         :return:
         """
         # initialization
-        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         x = self.blocks[0].back_prop(K1,otf3d)
-        phi = Variable(K1.data.clone())
-        z = Variable(x.data.clone())
-        u1 =torch.zeros(K1.size())
-        u2 = torch.zeros(x.size())
-        stage_symlosses = torch.tensor([0.0])
+        phi = Variable(K1.data.clone()).to(device)
+        z = Variable(x.data.clone()).to(device)
+        u1 =torch.zeros(K1.size()).to(device)
+        u2 = torch.zeros(x.size()).to(device)
+        stage_symlosses = torch.tensor([0.0]).to(device)
 
         for i in range(self.n):
             x,phi,z,u1,u2,stage_symloss = self.blocks[i](x,phi,z,u1,u2,otf3d,K1) #x,phi,z,u1,u2,otf3d, K1

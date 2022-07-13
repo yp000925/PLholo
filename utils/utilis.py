@@ -1,11 +1,7 @@
 import torch
-import math
-import time
 import torch.nn as nn
-import h5py
 import numpy as np
 import random
-from matplotlib import pyplot as plt
 from torch.fft import fftn,ifftn,fftshift,ifftshift
 
 def random_init(seed):
@@ -35,8 +31,7 @@ class CBL(nn.Module):
 class SoftThreshold(nn.Module):
     def __init__(self):
         super(SoftThreshold, self).__init__()
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.soft_thr = nn.Parameter(torch.tensor([0.01]), requires_grad=True).to(device)
+        self.soft_thr = nn.Parameter(torch.tensor([0.01]), requires_grad=True)
 
     def forward(self, x):
         return torch.mul(torch.sign(x),torch.nn.functional.relu(torch.abs(x)-self.soft_thr))
@@ -132,12 +127,12 @@ def PCC(y_pred,y_true, mean=True):
         return torch.mean(num/den)
     return num/den
 
-if __name__ == "__main__":
-    y_pred = torch.zeros([2,3,4,4])
-    a = 2*torch.ones([2,2])
-
-    y_true = torch.ones_like(y_pred)
-    pcc(y_pred,y_true)
+# if __name__ == "__main__":
+#     y_pred = torch.zeros([2,3,4,4])
+#     a = 2*torch.ones([2,2])
+#
+#     y_true = torch.ones_like(y_pred)
+#     pcc(y_pred,y_true)
 
 
 
