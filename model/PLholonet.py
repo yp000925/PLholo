@@ -103,7 +103,7 @@ class PLholonet_block(nn.Module):
         # otf3d_tensor = otf3d.tile([batch_size,1,1,1])
         phi_tilde = torch.abs(torch.sum(torch.mul(otf3d, x),dim=1,keepdim=True))+u1
         # phi_tilde = torch.abs(phi_tilde)
-        K0 = self.K - K1 # number of zero in each pixel
+        K0 = 1 - K1 # number of zero in each pixel
 
         ind_0 = (K1==0)# the index of pixel that does not need to update the predicted bit value (0 or already goes to optimized solution)
         ind_1 = (K1!=0) # the index of pixel that needs to update the predicted bit value

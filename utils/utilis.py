@@ -112,8 +112,10 @@ def mse_loss(y_pred,y_true):
 
 def PSNR(y_pred, y_true):
     EPS = 1e-8
-    mse = torch.mean((y_pred - y_true) ** 2)
-    score = - 10 * torch.log10(mse + EPS)
+    mse = torch.mean((y_pred - y_true) ** 2,dim=[2,3])
+    score  = -10*torch.log10(mse+EPS)
+    score  = torch.mean(score)
+    # score = - 10 * torch.log10(mse + EPS)
     return score
 
 def PCC(y_pred,y_true, mean=True):
@@ -137,7 +139,7 @@ if __name__ == "__main__":
     a = 2*torch.ones([2,2])
 
     y_true = torch.ones_like(y_pred)
-    pcc(y_pred,y_true)
+    PSNR(y_pred,y_true)
 
 
 
