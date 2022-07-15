@@ -5,9 +5,9 @@ from utils.utilis import FT2d,iFT2d,autopad
 from utils.dataset import create_dataloader_qis
 
 class PLholonet_block(nn.Module):
-    def __init__(self,d, K=4, alpha=4):
+    def __init__(self,d, alpha=4):
         super(PLholonet_block, self).__init__()
-        self.K = K
+        self.K = alpha # when generate the signal, K/alpha = 1
         self.alpha = alpha
         self.rho1 = torch.nn.Parameter(torch.randn([1]),requires_grad=True)
         torch.nn.init.normal_(self.rho1)
@@ -93,7 +93,7 @@ class PLholonet_block(nn.Module):
         # otf3d_tensor = otf3d.tile([batch_size,1,1,1])
         phi_tilde = torch.abs(torch.sum(torch.mul(otf3d, x),dim=1,keepdim=True))+u1
         # phi_tilde = torch.abs(phi_tilde)
-        K0 = self.K - K1 # number of zero in each pixel
+        K0 = 1 - K1 # number of zero in each pixel
 
         ind_0 = (K1==0)# the index of pixel that does not need to update the predicted bit value (0 or already goes to optimized solution)
         ind_1 = (K1!=0) # the index of pixel that needs to update the predicted bit value
@@ -177,6 +177,7 @@ class PLholonet(nn.Module):
         """
         # initialization
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = K1.device
         x = self.blocks[0].back_prop(K1,otf3d)
         phi = Variable(K1.data.clone()).to(device)
         z = Variable(x.data.clone()).to(device)

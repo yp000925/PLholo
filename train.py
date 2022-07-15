@@ -5,7 +5,7 @@ import torch
 import logging
 from model.PLholonet import PLholonet
 from utils.dataset import create_dataloader_qis
-from utils.utilis import PCC,PSNR,accuracy,random_init
+from utils.utilis import PCC,PSNR,accuracy,random_init,tensor2value
 from torch.optim import Adam
 from tqdm import tqdm
 from argparse import ArgumentParser
@@ -36,9 +36,9 @@ def train_epoch(model, opt, dataloader, epoch, freeze = []):
     psnr = []
     opt.zero_grad()
     for i,(K1_map, label, otf3d, _) in pbar:
-        K1_map = K1_map.to(device=model.device)
-        otf3d = otf3d.to(device=model.device)
-        label = label.to(device=model.device)
+        K1_map = K1_map.to(torch.float32).to(device=model.device)
+        otf3d = otf3d.to(torch.complex64).to(device=model.device)
+        label = label.to(torch.float32).to(device=model.device)
         x, _sloss = model(K1_map,otf3d)
         _dloss = torch.mean(torch.pow(x-label,2))
         _total_loss = _dloss+_sloss
@@ -51,12 +51,12 @@ def train_epoch(model, opt, dataloader, epoch, freeze = []):
         _acc = accuracy(x,label)
 
         # update metric
-        total_loss.append(_total_loss.detach().numpy())
-        sloss.append(_sloss.detach().numpy())
-        dloss.append(_dloss.detach().numpy())
-        pcc.append(_pcc.detach().numpy())
-        psnr.append(_psnr.detach().numpy())
-        acc.append(_acc.detach().numpy())
+        total_loss.append(tensor2value(_total_loss))
+        sloss.append(tensor2value(_sloss))
+        dloss.append(tensor2value(_dloss))
+        pcc.append(tensor2value(_pcc))
+        psnr.append(tensor2value(_psnr))
+        acc.append(tensor2value(_acc))
 
         # printing
         mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
@@ -82,9 +82,9 @@ def eval_epoch(model, opt, dataloader, epoch):
 
     with torch.no_grad():
         for i,(K1_map, label, otf3d, _) in pbar:
-            K1_map = K1_map.to(device=model.device)
-            otf3d = otf3d.to(device=model.device)
-            label = label.to(device=model.device)
+            K1_map = K1_map.to(torch.float32).to(device=model.device)
+            otf3d = otf3d.to(torch.complex64).to(device=model.device)
+            label = label.to(torch.float32).to(device=model.device)
             x, _sloss = model(K1_map,otf3d)
             _dloss = torch.mean(torch.pow(x-label,2))
             _total_loss = _dloss+_sloss
@@ -100,12 +100,12 @@ def eval_epoch(model, opt, dataloader, epoch):
             # info = ('%10s'*2 + '%10.4g'*5)%('%g'%(epoch),mem,stage_symlosses,loss_discrepancy,avg_loss,pcc_,psnr_)
             # pbar.set_description(info)
             pbar.set_description("Evaluating.....")
-            pcc.append(_pcc.detach().numpy())
-            psnr.append(_psnr.detach().numpy())
-            dloss.append(_dloss.detach().numpy())
-            sloss.append(_sloss.detach().numpy())
-            total_loss.append(_total_loss.detach().numpy())
-            acc.append(_acc.detach().numpy())
+            total_loss.append(tensor2value(_total_loss))
+            sloss.append(tensor2value(_sloss))
+            dloss.append(tensor2value(_dloss))
+            pcc.append(tensor2value(_pcc))
+            psnr.append(tensor2value(_psnr))
+            acc.append(tensor2value(_acc))
 
     logger.info(('\n'+'%10s'*7)%('  ','sloss','dloss','loss','acc','pcc','psnr'))
     info = ('%10s'+ '%10.4g'*6)%('Eval_result',np.mean(sloss),np.mean(dloss),
@@ -118,7 +118,7 @@ if __name__=="__main__":
     random_init(seed=43)
 
     parser = ArgumentParser(description='PLholonet')
-    parser.add_argument('--batch_sz', type=int, default=16, help='batch size')
+    parser.add_argument('--batch_sz', type=int, default=18, help='batch size')
     # parser.add_argument('--obj_type', type=str, default='sim', help='exp or sim')
     parser.add_argument('--Nz', type=int, default=25, help='depth number')
     parser.add_argument('--kt', type=int, default=30, help='temporal oversampling ratio')
@@ -126,9 +126,9 @@ if __name__=="__main__":
     parser.add_argument('--dz', type=str, default='1200um', help='depth interval')
     parser.add_argument('--ppv', type=str, default='5e-03', help='ppv')
     parser.add_argument('--lr_init', type=float, default=1e-4, help='initial learning rate')
-    parser.add_argument('--epochs', type=int, default=100, help='epochs')
+    parser.add_argument('--epochs', type=int, default=250, help='epochs')
     parser.add_argument('--Nxy', type=int, default=128, help='lateral size')
-    parser.add_argument('--gamma', type=float, default=1e-4, help='symmetric loss parameter')
+    parser.add_argument('--gamma', type=float, default=1e-3, help='symmetric loss parameter')
     parser.add_argument('--layer_num', type=int, default=5,  help='phase number of PLholoNet')
     args = parser.parse_args([])
     batch_sz = args.batch_sz
@@ -141,7 +141,7 @@ if __name__=="__main__":
     logging.basicConfig(format="%(message)s",level=logging.INFO)
 
     sys_param = 'Nz' + str(args.Nz)  + '_Nxy' + str(args.Nxy) + \
-                'L' + str(args.layer_num) + '_B' + str(args.batch_sz) + \
+                '_L' + str(args.layer_num) + '_B' + str(args.batch_sz) + \
                 '_lr' + str(args.lr_init) + '_G' + str(args.gamma) + '_kt' + str(args.kt)+'_ks' + str(args.ks)
 
     train_data_path =  './syn_data/data/train_' + 'Nz' + str(args.Nz) + '_Nxy' + str(args.Nxy)+'_kt' + str(args.kt)+'_ks' + str(args.ks)

@@ -3,6 +3,8 @@ import torch.nn as nn
 import numpy as np
 import random
 from torch.fft import fftn,ifftn,fftshift,ifftshift
+import matplotlib.pyplot as plt
+import math
 
 def random_init(seed):
     random.seed(seed)
@@ -36,6 +38,8 @@ class SoftThreshold(nn.Module):
     def forward(self, x):
         return torch.mul(torch.sign(x),torch.nn.functional.relu(torch.abs(x)-self.soft_thr))
 
+def tensor2value(tensor):
+    return tensor.data.cpu().numpy()
 
 def FT2d(a_tensor):
     if len(a_tensor.shape) == 4:
@@ -135,4 +139,33 @@ def PCC(y_pred,y_true, mean=True):
 #     pcc(y_pred,y_true)
 
 
+# %%-------------------------------------- Display ------------------------------------------
+# Plot a 3D matrix slice by slice
+def plotcube(vol, fig_title, file_name):
+    maxval = np.amax(vol)
+    minval = np.amin(vol)
+    vol = (vol - minval) / (maxval - minval)
+
+    Nz, Nx, Ny = np.shape(vol)
+
+    if Nz <= 10:
+        img_col_n = Nz
+    else:
+        img_col_n = math.ceil(np.sqrt(Nz))
+
+    img_row_n = math.ceil(Nz / img_col_n)
+    image_height = 5
+    fig = plt.figure(figsize=(img_col_n * image_height, image_height * img_row_n + 0.5))
+    fig.suptitle(fig_title, y=1)
+    img_n = 0
+    for iz in range(Nz):
+        img_n = img_n + 1
+        ax = fig.add_subplot(img_row_n, img_col_n, img_n)
+        ax.set_title("z " + str(img_n))
+        slice = vol[iz, :, :]
+        im = ax.imshow(slice, aspect='equal')
+
+    fig.tight_layout()
+    # plt.savefig(file_name)
+    plt.show()
 
