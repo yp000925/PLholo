@@ -1,12 +1,10 @@
 import torch
-import math
-import time
 import torch.nn as nn
-import h5py
 import numpy as np
 import random
-from matplotlib import pyplot as plt
 from torch.fft import fftn,ifftn,fftshift,ifftshift
+import matplotlib.pyplot as plt
+import math
 
 def random_init(seed):
     random.seed(seed)
@@ -35,12 +33,13 @@ class CBL(nn.Module):
 class SoftThreshold(nn.Module):
     def __init__(self):
         super(SoftThreshold, self).__init__()
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.soft_thr = nn.Parameter(torch.tensor([0.01]), requires_grad=True).to(device)
+        self.soft_thr = nn.Parameter(torch.tensor([0.01]), requires_grad=True)
 
     def forward(self, x):
         return torch.mul(torch.sign(x),torch.nn.functional.relu(torch.abs(x)-self.soft_thr))
 
+def tensor2value(tensor):
+    return tensor.data.cpu().numpy()
 
 def FT2d(a_tensor):
     if len(a_tensor.shape) == 4:
@@ -134,12 +133,37 @@ def PCC(y_pred,y_true, mean=True):
         return torch.mean(num/den)
     return num/den
 
-if __name__ == "__main__":
-    y_pred = torch.zeros([2,3,4,4])
-    a = 2*torch.ones([2,2])
+# if __name__ == "__main__":
+#     y_pred = torch.zeros([2,3,4,4])
+#     a = 2*torch.ones([2,2])
 
-    y_true = torch.ones_like(y_pred)
-    PSNR(y_pred,y_true)
+# %%-------------------------------------- Display ------------------------------------------
+# Plot a 3D matrix slice by slice
+def plotcube(vol, fig_title, file_name):
+    maxval = np.amax(vol)
+    minval = np.amin(vol)
+    vol = (vol - minval) / (maxval - minval)
 
+    Nz, Nx, Ny = np.shape(vol)
 
+    if Nz <= 10:
+        img_col_n = Nz
+    else:
+        img_col_n = math.ceil(np.sqrt(Nz))
+
+    img_row_n = math.ceil(Nz / img_col_n)
+    image_height = 5
+    fig = plt.figure(figsize=(img_col_n * image_height, image_height * img_row_n + 0.5))
+    fig.suptitle(fig_title, y=1)
+    img_n = 0
+    for iz in range(Nz):
+        img_n = img_n + 1
+        ax = fig.add_subplot(img_row_n, img_col_n, img_n)
+        ax.set_title("z " + str(img_n))
+        slice = vol[iz, :, :]
+        im = ax.imshow(slice, aspect='equal')
+
+    fig.tight_layout()
+    # plt.savefig(file_name)
+    plt.show()
 
