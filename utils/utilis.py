@@ -99,6 +99,8 @@ def autopad(k, p=None):  # kernel, padding
     return p
 
 
+# %%-------------------------------------- Metrics ------------------------------------------
+
 def accuracy(y_pred,y_true):
     """Computes the accuracy for multiple binary predictions"""
     pred = y_pred >= 0.5
@@ -119,16 +121,17 @@ def PSNR(y_pred, y_true):
 
 def PCC(y_pred,y_true, mean=True):
     [B,D,W,H]  = y_pred.shape
-    y_pred = y_pred.view([B,D,W*H])
-    y_true = y_true.view([B,D,W*H])
-    mp = torch.mean(y_pred,dim =2,keepdim=True)
-    mt = torch.mean(y_true,dim =2,keepdim=True)
+    y_pred = y_pred.view([B,D*W*H])
+    y_true = y_true.view([B,D*W*H])
+    mp = torch.mean(y_pred,dim =1,keepdim=True)
+    mt = torch.mean(y_true,dim =1,keepdim=True)
     x_p,x_t = y_pred-mp,y_true-mt
-    std_p = torch.std(y_pred,dim=2)
-    std_t = torch.std(y_true,dim=2)
+    # std_p = torch.std(y_pred,dim=1)
+    # std_t = torch.std(y_true,dim=1)
 
-    num = torch.mean(torch.mul(x_p,x_t),dim=2)
-    den = std_p*std_t
+    num = torch.mean(torch.mul(x_p,x_t),dim=1)
+    den = torch.norm(x_p,p=2,dim=1)*torch.norm(x_t,p=2,dim=1)
+    # den = std_p*std_t
     if mean:
         return torch.mean(num/den)
     return num/den
