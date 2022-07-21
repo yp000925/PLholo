@@ -7,7 +7,7 @@ from utils.dataset import create_dataloader_qis
 class PLholonet_block(nn.Module):
     def __init__(self,d, alpha=4):
         super(PLholonet_block, self).__init__()
-        self.K = alpha # when generate the signal, K/alpha = 1
+        self.K = alpha # = Ks^2 when generate the signal, K/alpha = 1
         self.alpha = alpha
         self.rho1 = torch.nn.Parameter(torch.randn([1]),requires_grad=True)
         torch.nn.init.normal_(self.rho1)
@@ -18,14 +18,14 @@ class PLholonet_block(nn.Module):
         #self.denoiser = ResUNet().to(device)
         self.denoiser = denoiser(d)
 
-    def batch_forward_proj(self,field_batch, otf3d_batch, intensity=True):
+    def batch_forward_proj(self,field_batch, otf3d_batch, intensity=True,scale = True):
         '''
 
         :param field_batch:  3d field for batch [B, C, H, W]
         :param otf3d_batch: OTF3d for batch [B, C, H, W] or [C, H, W]
         :return: holo_batch [B,1, H, W]
         '''
-
+        [B, C, H, W] = field_batch.shape
         if len(otf3d_batch.shape) == 3:
             otf3d_batch = otf3d_batch.unsqueeze(0)
         assert otf3d_batch.shape[1] == field_batch.shape[1],"The depth slice does not match between field and OTF"
@@ -33,7 +33,17 @@ class PLholonet_block(nn.Module):
         Fholo = torch.sum(Fholo3d,dim = 1,keepdim=True)
         holo = iFT2d(Fholo)
         if intensity:
-            return torch.abs(holo)
+            holo = torch.abs(holo)
+            if scale:
+                # max_range = C
+                # holo = holo/max_range
+                # assert holo.max()[0]< 1.0,"The inner hologram is larger than 1"
+                mintmp = holo.view([B,1,H*W]).min(2,keepdim=True)[0].unsqueeze(-1)
+                maxtmp = holo.view([B,1,H*W]).max(2,keepdim=True)[0].unsqueeze(-1)
+                holo = (holo-mintmp)/(maxtmp-mintmp)
+                return holo
+            else:
+                return holo
         return holo
 
     def batch_back_proj(self, holo_batch,otf3d_batch,real_constraint= True):
@@ -159,7 +169,6 @@ class PLholonet_block(nn.Module):
             phimax[ind_neg] = phiave[ind_neg]
             phiave[ind_1] = (phimin[ind_1]+phimax[ind_1])/2.0
 
-
         phi_next[K1 != 0] = phiave[K1 != 0]
         return phi_next
 
@@ -282,7 +291,18 @@ if __name__ == "__main__":
     # x, stage_symlosses = net(K1,otf3d)
     path = "/Users/zhangyunping/PycharmProjects/PLholo/syn_data/data/Nz25_Dz0.75e-3_ppv2e-4/train_Nz25_Nxy128_kt30_ks2"
     dataloader, dataset = create_dataloader_qis(path,batch_size=2,Kt=30,Ks=2)
-    net = PLholonet(n=2,d=7).to(device)
+    model = PLholonet(n=5, d=25)
+    if torch.cuda.is_available():
+        model = torch.nn.DataParallel(model)
+        model = model.module.to("cuda")
+        model.device = torch.device('cuda')
+    else:
+        model = torch.nn.DataParallel(model)
+        model.device = torch.device('cpu')
+
     for batch_i, (K1_map, label, otf3d, y) in enumerate(dataloader):
-        x, stage_symlosses = net(K1_map,otf3d)
+        K1_map = K1_map.to(torch.float32).to(device=model.device)
+        otf3d = otf3d.to(torch.complex64).to(device=model.device)
+        label = label.to(torch.float32).to(device=model.device)
+        x, stage_symlosses = model(K1_map,otf3d)
         break
