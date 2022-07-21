@@ -17,13 +17,15 @@ if __name__ == "__main__":
     batch_sz = 1
     kt=30
     ks=2
-    val_data_path = "/home/zhangyp/PycharmProjects/PLholo/syn_data/data/val_Nz25_Nxy128_kt30_ks2"
+    # val_data_path = "/home/zhangyp/PycharmProjects/PLholo/syn_data/data/val_Nz25_Nxy128_kt30_ks2"
+    val_data_path = "/Users/zhangyunping/PycharmProjects/PLholo/syn_data/data/Nz25_Dz0.75e-3_ppv2e-4/val_Nz25_Nxy128_kt30_ks2"
     # val_data_path = "/home/zhangyp/PycharmProjects/PLholo/syn_data/data/train_Nz25_Nxy128_kt30_ks2"
     data_loader,dataset = create_dataloader_qis(val_data_path,batch_sz,kt,ks)
     K1_map, label, otf3d, y = next(iter(data_loader))
 
     #load the model
-    model_path = "/home/zhangyp/PycharmProjects/PLholo/experiment/PLholonet_Nz25_Nxy128_L5_B18_lr0.0001_G0.001_kt30_ks2"
+    # model_path = "/home/zhangyp/PycharmProjects/PLholo/experiment/PLholonet_Nz25_Nxy128_L5_B18_lr0.0001_G0.001_kt30_ks2"
+    model_path = "/Users/zhangyunping/PycharmProjects/PLholo/experiment/PLholonet_Nz25_Nxy128_L5_B18_lr0.0001_G1e-05_kt30_ks2"
     model_name = model_path.split('/')[-1]
     params = model_name.split('_')
     try:

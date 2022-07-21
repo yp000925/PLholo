@@ -3,11 +3,12 @@ cd
 
 data_dir = '../data/';
 sr = 0;                % pixel size of half random point
-data_num = 2000;
+data_num = 1;
 % Nxy = 128;  Nz = 7;  dz = 1.2e-3; 
-Nxy = 128;  Nz = 25;  dz = 0.725e-3;
+% Nxy = 128;  Nz = 25;  dz = 0                                                                                                                                                                                                                                 .725e-3;
+Nxy = 128;  Nz = 32;  dz = 1e-4;
 %Nxy = 64;  Nz = 32;  dz = 0.725e-3;     
-holoDataType = 3;
+holoDataType = 1;
 %%
 lambda = 660e-9;     % Illumination wavelength
 pps    = 20e-6;      % pixel pitch of CCD camera
@@ -48,28 +49,30 @@ switch holoDataType
             ppv_max = 1e-3;
         end
 
-        if ppv_min == ppv_max
-            ppv_text = [num2str(ppv_min,'%.e')];
-        else
-            ppv_text = [num2str(ppv_min,'%.e') '~' num2str(ppv_max,'%.e')];
-        end
 %         data_dir = [data_dir,'Nz', num2str(Nz), '_Nxy', num2str(Nxy),'_kt',num2str(params.T),'_ks',num2str(params.K)];
         
-    case 2
-        % Test data_single with varying ppvs
-        ppvs = [1 2 3 4 5 6 7 8 9 10]*1e-3;
-        group_num = length(ppvs);
-        
-        data_num = 100;         % number of test data_single
+%     case 2
+%         Test data_single with varying ppvs
+%         ppvs = [1 2 3 4 5 6 7 8 9 10]*1e-3;
+%         group_num = length(ppvs);
+%         
+%         data_num = 100;         % number of test data_single
          
 %         data_dir = [data_dir, 'test_ppv_Nz', num2str(Nz),'_dz', num2str(dz*1e6),'um'];
     case 3
         % Fixed ppv
             ppv_min = 2e-4;
             ppv_max = 2e-4;
+
 end
 
-data_dir = [data_dir,'Nz', num2str(Nz), '_Nxy', num2str(Nxy),'_kt',num2str(params.T),'_ks',num2str(params.K)];
+if ppv_min == ppv_max
+    ppv_text = [num2str(ppv_min,'%.e')];
+else
+    ppv_text = [num2str(ppv_min,'%.e') '~' num2str(ppv_max,'%.e')];
+end
+
+data_dir = [data_dir,'Nz', num2str(Nz), '_Nxy', num2str(Nxy),'_kt',num2str(params.T),'_ks',num2str(params.K),'_ppv',ppv_text];
         
 if not(exist(data_dir,'dir'))
     mkdir(data_dir)
@@ -77,7 +80,7 @@ end
 
  
 %% generate training data 
-for idx = 1001:data_num
+for idx = 1:data_num
     data = zeros(Nxy,Nxy);
     label = zeros(Nz,Nxy,Nxy);
     y = zeros(params.T,Nxy*params.K,Nxy*params.K);
@@ -91,7 +94,7 @@ for idx = 1001:data_num
     data = (data-min(min(data)))/(max(max(data))-min(min(data)));
     label(:,:,:) = permute(obj,[3,1,2]);% [Nz,Nxy,Nxy]
     y(:,:,:) = generateQIS(params,data);
-    save([data_dir,'/',num2str(idx),'.mat'],'data','label','otf3d','y');
+%     save([data_dir,'/',num2str(idx),'.mat'],'data','label','otf3d','y');
     disp(idx)
 end
 
@@ -104,8 +107,8 @@ temp = abs(real(AT(data)));  %temp = (temp- min(temp(:)))./(max(temp(:))-min(tem
 figure; imagesc(plotdatacube(temp)); title('Gabor reconstruction'); axis image; drawnow; colormap(hot); colorbar; axis off;
 
 
-%% reconstruct DH by benchmark algorithm 
-% QmapLR  =  params.Qmax*ones([Nxy,Nxy]);
-% alpha = params.K^2*(params.Qmax-1);
-% IM_qs   =  imageReconstruct(permute(y,[2,3,1]),params.K,alpha,QmapLR);
-% figure; imagesc(IM_qs(:,:)); title('Hologram_qis'); axis image; drawnow; colormap(gray); colorbar; axis off;
+% reconstruct DH by benchmark algorithm 
+QmapLR  =  ones([Nxy,Nxy]);
+alpha = params.K^2*(params.Qmax-1);
+IM_qs   =  imageReconstruct(permute(y,[2,3,1]),params.K,alpha,QmapLR);
+figure; imagesc(IM_qs(:,:)); title('Hologram_qis'); axis image; drawnow; colormap(gray); colorbar; axis off;

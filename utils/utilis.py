@@ -41,18 +41,29 @@ class SoftThreshold(nn.Module):
 def tensor2value(tensor):
     return tensor.data.cpu().numpy()
 
-def FT2d(a_tensor):
-    if len(a_tensor.shape) == 4:
-        return ifftshift(fftn(fftshift(a_tensor,dim =[2,3]),dim =[2,3]),dim =[2,3])
-    elif len(a_tensor.shape) == 3:
-        return ifftshift(fftn(fftshift(a_tensor,dim =[1,2]),dim =[1,2]),dim =[1,2])
+# def FT2d(a_tensor):
+#     if len(a_tensor.shape) == 4:
+#         return ifftshift(fftn(fftshift(a_tensor,dim =[2,3]),dim =[2,3]),dim =[2,3])
+#     elif len(a_tensor.shape) == 3:
+#         return ifftshift(fftn(fftshift(a_tensor,dim =[1,2]),dim =[1,2]),dim =[1,2])
 
-
-def iFT2d(a_tensor):
+def FT2d(a_tensor):#since when we construct the OTF, the shift has been taken
     if len(a_tensor.shape) == 4:
-        return ifftshift(ifftn(fftshift(a_tensor,dim =[2,3]),dim =[2,3]),dim =[2,3])
+        return fftn(a_tensor,dim =[2,3])
     elif len(a_tensor.shape) == 3:
-        return ifftshift(ifftn(fftshift(a_tensor,dim =[1,2]),dim =[1,2]),dim =[1,2])
+        return fftn(a_tensor,dim =[1,2])
+
+# def iFT2d(a_tensor):
+#     if len(a_tensor.shape) == 4:
+#         return ifftshift(ifftn(fftshift(a_tensor,dim =[2,3]),dim =[2,3]),dim =[2,3])
+#     elif len(a_tensor.shape) == 3:
+#         return ifftshift(ifftn(fftshift(a_tensor,dim =[1,2]),dim =[1,2]),dim =[1,2])
+
+def iFT2d(a_tensor):# since when we construct the OTF, the shift has been taken
+    if len(a_tensor.shape) == 4:
+        return ifftn(a_tensor,dim =[2,3])
+    elif len(a_tensor.shape) == 3:
+        return ifftn(a_tensor,dim =[1,2])
 
 def generate_K1map(ob, block_shape, norm = False):
     Ks_m, Ks_n = block_shape
