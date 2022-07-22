@@ -26,7 +26,7 @@ if __name__ == "__main__":
     #load the model
     # model_path = "/home/zhangyp/PycharmProjects/PLholo/experiment/PLholonet_Nz25_Nxy128_L5_B18_lr0.0001_G0.001_kt30_ks2"
     # model_path = "/Users/zhangyunping/PycharmProjects/PLholo/experiment/PLholonet_Nz25_Nxy128_L5_B18_lr0.0001_G1e-05_kt30_ks2"
-    model_path = "/home/zhangyp/PycharmProjects/PLholo/experiment/PLholonet_Nz32_Nxy128_L5_B16_lr0.0001_G0.0001_kt30_ks2_v1"
+    model_path = "/experiment/PLholonet_Nz32_Nxy128_L5_B16_lr0.0001_G0.0001_kt30_ks2_MSE"
     model_name = model_path.split('/')[-1]
     params = model_name.split('_')
     try:

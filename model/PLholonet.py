@@ -1,3 +1,12 @@
+"""
+settting:
+- Python 3.8.13
+- torch 1.11.0
+- cuda 11.3
+- cudnn 8.2
+
+"""
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable

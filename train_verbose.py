@@ -155,7 +155,7 @@ if __name__=="__main__":
     parser.add_argument('--dz', type=str, default='1200um', help='depth interval')
     parser.add_argument('--ppv', type=str, default='5e-03', help='ppv')
     parser.add_argument('--lr_init', type=float, default=1e-4, help='initial learning rate')
-    parser.add_argument('--epochs', type=int, default=250, help='epochs')
+    parser.add_argument('--epochs', type=int, default=150, help='epochs')
     parser.add_argument('--Nxy', type=int, default=128, help='lateral size')
     parser.add_argument('--gamma', type=float, default=1e-4, help='symmetric loss parameter')
     parser.add_argument('--layer_num', type=int, default=5,  help='phase number of PLholoNet')
@@ -223,7 +223,7 @@ if __name__=="__main__":
     sh.setFormatter(formater)
     # add both handlers
     logger.addHandler(fh)
-    logger.addHandler(sh)
+    # logger.addHandler(sh)
 
 
 
