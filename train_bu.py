@@ -11,7 +11,7 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 from torch.utils.tensorboard import SummaryWriter
 import torch.optim as optim
-import re
+
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_epoch(model, opt, dataloader, epoch, freeze = []):
@@ -118,10 +118,7 @@ if __name__=="__main__":
     random_init(seed=43)
 
     parser = ArgumentParser(description='PLholonet')
-    parser.add_argument('--batch_sz', type=int, default=16, help='batch size')
-    parser.add_argument('--train_data_path',type=str,default='train_Nz32_Nxy128_kt30_ks2_ppv2e-04~1e-03',help='datapath with params')
-    parser.add_argument('--val_data_path',type=str,default='val_Nz32_Nxy128_kt30_ks2_ppv2e-04~1e-03',help='datapath with params')
-    parser.add_argument('--data_root',type=str,default='./syn_data/data',help='data root')
+    parser.add_argument('--batch_sz', type=int, default=18, help='batch size')
     # parser.add_argument('--obj_type', type=str, default='sim', help='exp or sim')
     parser.add_argument('--Nz', type=int, default=25, help='depth number')
     parser.add_argument('--kt', type=int, default=30, help='temporal oversampling ratio')
@@ -129,49 +126,26 @@ if __name__=="__main__":
     parser.add_argument('--dz', type=str, default='1200um', help='depth interval')
     parser.add_argument('--ppv', type=str, default='5e-03', help='ppv')
     parser.add_argument('--lr_init', type=float, default=1e-4, help='initial learning rate')
-    parser.add_argument('--epochs', type=int, default=250, help='epochs')
+    parser.add_argument('--epochs', type=int, default=150, help='epochs')
     parser.add_argument('--Nxy', type=int, default=128, help='lateral size')
-    parser.add_argument('--gamma', type=float, default=1e-4, help='symmetric loss parameter')
+    parser.add_argument('--gamma', type=float, default=1e-5, help='symmetric loss parameter')
     parser.add_argument('--layer_num', type=int, default=5,  help='phase number of PLholoNet')
-    # args = parser.parse_args([])
-    try:
-        args = parser.parse_args()
-    except:
-        args = parser.parse_args([])
-
-
-    Nd = args.layer_num
+    args = parser.parse_args([])
     batch_sz = args.batch_sz
+    kt = args.kt
+    ks = args.ks
     lr = args.lr_init
+    Nz = args.Nz
+    Nd = args.layer_num
     logger = logging.getLogger(__name__)
     logging.basicConfig(format="%(message)s",level=logging.INFO)
-    train_data_path = args.train_data_path
-    val_data_path = args.val_data_path
-    gamma = args.gamma
 
-    try:
-        logging.info("Compile the params from the dataset")
-        data_name = train_data_path.split('/')[-1]
-        params = data_name.split('_')
-        Nz = [eval(re.findall(r'Nz(\d+)',x)[0]) for x in params if re.findall(r'Nz(\d+)',x)][0]
-        Nxy = [eval(re.findall(r'Nxy(\d+)',x)[0]) for x in params if re.findall(r'Nxy(\d+)',x)][0]
-        kt = [eval(re.findall(r'kt(\d+)',x)[0]) for x in params if re.findall(r'kt(\d+)',x)][0]
-        ks = [eval(re.findall(r'ks(\d+)',x)[0]) for x in params if re.findall(r'ks(\d+)',x)][0]
+    sys_param = 'Nz' + str(args.Nz)  + '_Nxy' + str(args.Nxy) + \
+                '_L' + str(args.layer_num) + '_B' + str(args.batch_sz) + \
+                '_lr' + str(args.lr_init) + '_G' + str(args.gamma) + '_kt' + str(args.kt)+'_ks' + str(args.ks)
 
-    except:
-        logging.info("Loading the default value:")
-        Nz = args.Nz
-        kt = args.kt
-        ks = args.ks
-        Nxy = args.Nxy
-
-    sys_param = 'Nz' + str(Nz)  + '_Nxy' + str(Nxy) + \
-                '_L' + str(Nd) + '_B' + str(batch_sz) + \
-                '_lr' + str(lr) + '_G' + str(gamma) + '_kt' + str(kt)+'_ks' + str(ks)
-    train_data_path = os.path.join(args.data_root,train_data_path)
-    val_data_path = os.path.join(args.data_root,val_data_path)
-
-    logger.info(sys_param)
+    train_data_path =  './syn_data/data/train_' + 'Nz' + str(args.Nz) + '_Nxy' + str(args.Nxy)+'_kt' + str(args.kt)+'_ks' + str(args.ks)
+    val_data_path = './syn_data/data/val_' + 'Nz' + str(args.Nz) + '_Nxy' + str(args.Nxy)+'_kt' + str(args.kt)+'_ks' + str(args.ks)
 
     out_dir = './experiment/'
     log_dir = './logs/'
@@ -217,8 +191,8 @@ if __name__=="__main__":
         # Log
         current_lr = optimizer.param_groups[0]['lr']
         tags = ['train/sloss', 'train/dloss', 'train/total_loss',  'train/acc', 'train/pcc','train/psnr'# train loss & metric
-                                                                                            'val/sloss', 'val/dloss', 'val/total_loss',  'val/acc','val/pcc','val/psnr' # val loss & metric
-                ]  # params
+                'val/sloss', 'val/dloss', 'val/total_loss',  'val/acc','val/pcc','val/psnr' # val loss & metric
+               ]  # params
         for x, tag in zip(list(train_out[:-1]) + list(eval_out[:-1]) , tags):
             if tb_writer:
                 tb_writer.add_scalar(tag, x, epoch)  # tensorboard

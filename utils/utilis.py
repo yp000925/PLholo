@@ -153,10 +153,10 @@ def PCC(y_pred,y_true, mean=True):
 
 # %%-------------------------------------- Display ------------------------------------------
 # Plot a 3D matrix slice by slice
-def plotcube(vol, fig_title, file_name):
+def plotcube(vol, fig_title, file_name=None, show=True):
     maxval = np.amax(vol)
     minval = np.amin(vol)
-    vol = (vol - minval) / (maxval - minval)
+    vol = (vol - minval) / (maxval - minval+1e-7)
 
     Nz, Nx, Ny = np.shape(vol)
 
@@ -178,6 +178,8 @@ def plotcube(vol, fig_title, file_name):
         im = ax.imshow(slice, aspect='equal')
 
     fig.tight_layout()
-    # plt.savefig(file_name)
-    plt.show()
+    if file_name:
+        plt.savefig(file_name)
+    if show:
+        plt.show()
 
