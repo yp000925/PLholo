@@ -41,8 +41,20 @@ class SoftThreshold(nn.Module):
 def tensor2value(tensor):
     return tensor.data.cpu().numpy()
 
-def FT2d(a_tensor):# by default FFTs the last two dimensions
-    return ifftshift(fft2(fftshift(a_tensor)))
+def batch_FT2d(a_tensor):# by default FFTs the last two dimensions
+    assert len(a_tensor.shape)==4, "expected dimension is 4 with batch size at first"
+    return ifftshift(fft2(fftshift(a_tensor,dim = [2,3])),dim=[2,3])
+#
+# def batch_FT2d(a):
+#     assert len(a.shape)==4, "expected dimension is 4 with batch size at first"
+#     A = torch.zeros(a)
+#     centre = a.shape[2]//2 +1
+#     A[:, :, :centre, :centre] = a[:, :, (centre-1):, (centre-1):]
+#     A[:, :, :centre, -(centre-1):] = a[:, :, (centre-1):, :(centre-1)]
+#     A[:, :, -(centre-1):, :centre] = a[:, :, : (centre-1), (centre-1):]
+#     A[:, :, -(centre-1):, -(centre-1):] = a[:, :, :(centre-1), :(centre-1)]
+#     return fft2(A)
+
 
 # def FT2d(a_tensor):#since when we construct the OTF, the shift has been taken
 #     if len(a_tensor.shape) == 4:
@@ -50,8 +62,9 @@ def FT2d(a_tensor):# by default FFTs the last two dimensions
 #     elif len(a_tensor.shape) == 3:
 #         return fftn(a_tensor,dim =[1,2])
 
-def iFT2d(a_tensor):
-    return ifftshift(ifft2(fftshift(a_tensor)))
+def batch_iFT2d(a_tensor):
+    assert len(a_tensor.shape)==4, "expected dimension is 4 with batch size at first"
+    return ifftshift(ifft2(fftshift(a_tensor,dim=[2,3])),dim= [2,3])
 
 # def iFT2d(a_tensor):# since when we construct the OTF, the shift has been taken
 #     if len(a_tensor.shape) == 4:

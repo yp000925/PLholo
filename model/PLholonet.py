@@ -10,8 +10,9 @@ settting:
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from utils.utilis import FT2d,iFT2d,autopad
+from utils.utilis import batch_FT2d,batch_iFT2d,autopad
 from utils.dataset import create_dataloader_qis
+from torch.fft import fft2,ifft2,fftshift,ifftshift
 
 class PLholonet_block(nn.Module):
     def __init__(self,d, alpha=4):
@@ -38,9 +39,9 @@ class PLholonet_block(nn.Module):
         if len(otf3d_batch.shape) == 3:
             otf3d_batch = otf3d_batch.unsqueeze(0)
         assert otf3d_batch.shape[1] == field_batch.shape[1],"The depth slice does not match between field and OTF"
-        Fholo3d =  torch.mul(FT2d(field_batch),otf3d_batch)
+        Fholo3d =  torch.mul(fft2(field_batch),otf3d_batch)
         Fholo = torch.sum(Fholo3d,dim = 1,keepdim=True)
-        holo = iFT2d(Fholo)
+        holo = ifft2(Fholo)
         if intensity:
             holo = torch.abs(holo)
             if scale:
@@ -70,9 +71,9 @@ class PLholonet_block(nn.Module):
         conj_otf3d = torch.conj(otf3d_batch)
         volumne_slice = otf3d_batch.shape[1]
         holo_expand = holo_batch.tile([1,volumne_slice,1,1])
-        holo_expand = FT2d(holo_expand)
+        holo_expand = fft2(holo_expand) #不需要shift 因为otf3d在构造的时候已经考虑了
         field_ft = torch.multiply(holo_expand,conj_otf3d)
-        field3d = iFT2d(field_ft)
+        field3d = ifft2(field_ft) # 不需要shift
         if real_constraint:
             return torch.real(field3d)
         return field3d
@@ -120,12 +121,12 @@ class PLholonet_block(nn.Module):
 
     def X_update(self, phi, z, u1, u2, otf3d):
         "proximal operator for forward propagation "
-        x1 = phi-u1
-        x2 = z-u2
+        x1 = phi+u1
+        x2 = z+u2
         #numerator n = F( alpha * At * I_h + v)
         temp = self.batch_back_proj(x1, otf3d)
         n = self.rho1*temp+self.rho2*x2
-        n = FT2d(n.to(torch.complex64))
+        n = batch_FT2d(n.to(torch.complex64))
 
         #denominator d = (|OTF|^2 + 1)
         otf_square = torch.abs(otf3d)**2
@@ -134,7 +135,7 @@ class PLholonet_block(nn.Module):
         d = d.to(torch.complex64)
 
         #final fraction
-        x_next = iFT2d(n/d)
+        x_next = batch_iFT2d(n/d)
         return x_next.real
 
     def Phi_update(self,x,z,u1,u2,otf3d, K1):
@@ -150,7 +151,7 @@ class PLholonet_block(nn.Module):
         """
         # batch_size = x.shape[0]
         # otf3d_tensor = otf3d.tile([batch_size,1,1,1])
-        phi_tilde = self.batch_forward_proj(x,otf3d)+u1
+        phi_tilde = self.batch_forward_proj(x,otf3d)-u1
         # phi_tilde = torch.abs(phi_tilde)
         K0 = 1 - K1 # number of zero in each pixel
 
@@ -184,7 +185,7 @@ class PLholonet_block(nn.Module):
 
     def Z_update(self,x,phi,u1,u2,otf3d):
         [B,C,W,H] = x.shape
-        z_tilde = x+u2
+        z_tilde = x-u2
         # z_tilde = z_tilde.view([B*C,1,W,H])
         z_next,stage_symloss = self.denoiser(z_tilde)
         return z_next,stage_symloss
@@ -204,8 +205,8 @@ class PLholonet_block(nn.Module):
         # Lagrangian updates
         # batch_size = x.shape[0]
         # otf3d_tensor = otf3d.tile([batch_size,1,1,1])
-        u1 = u1 + phi - self.batch_forward_proj(x,otf3d)
-        u2 = u2 + z - x
+        u1 = u1 + self.batch_forward_proj(x,otf3d)-phi
+        u2 = u2 + x - z
         # print(stage_symloss.shape)
         return x,phi,z,u1,u2,stage_symloss
 
