@@ -167,13 +167,13 @@ class PLPhaseNet_block(nn.Module):
         return x,phi,z,u1,u2,stage_symloss
 
 
-class PLholonet(nn.Module):
+class PLPhasenet(nn.Module):
     def __init__(self,n,d,sysloss_param = 2e-3):
-        super(PLholonet, self).__init__()
+        super(PLPhasenet, self).__init__()
         self.n = n
         self.blocks = nn.ModuleList([])
         for i in range(n):
-            self.blocks.append(PLholonet_block(d))
+            self.blocks.append(PLPhaseNet_block(d))
         self.Batchlayer = torch.nn.BatchNorm2d(d)
         self.Activation = torch.nn.Sigmoid()
         self.sysloss_param = sysloss_param
