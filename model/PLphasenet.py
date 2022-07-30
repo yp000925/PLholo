@@ -77,14 +77,15 @@ class PLPhaseNet_block(nn.Module):
 
     def X_update(self, phi, z, u1, u2, otf3d):
         "proximal operator for forward propagation "
-        x1 = phi+u1
-        x2 = z+u2
-        #numerator n = F( alpha * At * I_h + v)
-        temp = self.batch_back_proj(x1, otf3d)
+        x1 = phi + u1
+        x2 = z + u2
+        #numerator n = F(ifft(rho1 * otf * fft(x1)) + rho2*x2)
+        temp = self.batch_back_proj(x1, otf3d) # already perform the ifft
         n = self.rho1*temp+self.rho2*x2
         n =batch_FT2d(n.to(torch.complex64))
 
-        #denominator d = (|OTF|^2 + 1)
+        # denominator d = (rho1*|OTF|^2 + rho2)
+        #  in fact |OTF|^2==1
         otf_square = torch.abs(otf3d)**2
         ones_array = torch.ones_like(otf_square)
         d =  ones_array*self.rho2+otf_square*self.rho1
@@ -161,8 +162,8 @@ class PLPhaseNet_block(nn.Module):
         # Lagrangian updates
         # batch_size = x.shape[0]
         # otf3d_tensor = otf3d.tile([batch_size,1,1,1])
-        u1 = u1 + self.batch_forward_proj(x,otf3d)-phi
-        u2 = u2 + x - z
+        u1 = u1 + phi - self.batch_forward_proj(x,otf3d)
+        u2 = u2 +  z - x
         # print(stage_symloss.shape)
         return x,phi,z,u1,u2,stage_symloss
 
